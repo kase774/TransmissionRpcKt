@@ -10,4 +10,5 @@ suspend fun main() {
     val rpc = RpcClient()
     rpc.getTorrentData(TorrentIds.All, listOf(TorrentFields.ErrorString)).map { it.debugString() }
         .forEach(::println)
+
 }

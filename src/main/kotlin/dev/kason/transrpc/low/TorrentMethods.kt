@@ -51,7 +51,7 @@ data class TorrentAddedResult(
     val hashString: TorrentId.ShaHash,
     val isDuplicate: Boolean
 ) : RpcResponse {
-    object Serializer : KSerializer<TorrentAddedResult> {
+    internal object Serializer : KSerializer<TorrentAddedResult> {
         @Serializable
         internal data class Surrogate(
             @SerialName("torrent-added")
@@ -95,7 +95,7 @@ data class TorrentAddedResult(
  * etc. See libcurl documentation for more information.
  * */
 internal fun formatCookies(cookies: Map<String, String>) =
-    cookies.entries.joinToString(separator = ";", postfix = ";") {
+    cookies.entries.joinToString(separator = "; ", postfix = ";") {
         "${it.key}=${it.value}"
     }
 
@@ -245,7 +245,7 @@ suspend fun RpcClient.addTorrentFromBase64EncodedContent(
     )
 }
 
-// 3.4 removing
+// 3.5 removing
 @Serializable
 internal data class TorrentRemoveRequest(
     val ids: TorrentIds,
@@ -267,3 +267,102 @@ suspend fun RpcClient.removeTorrents(ids: TorrentIds, deleteLocalData: Boolean =
 suspend fun RpcClient.removeTorrent(ids: TorrentId, deleteLocalData: Boolean = false) =
     removeTorrents(TorrentIds.IdList(ids), deleteLocalData)
 
+// 3.6 moving
+
+@Serializable
+internal data class TorrentMoveRequest(
+    val ids: TorrentIds,
+    val location: String,
+    val move: Boolean
+) : RpcRequest<NullResponse>() {
+    override val method: String
+        get() = "torrent-set-location"
+}
+
+/** Moves torrents with the given id to the new location specified by [location].
+ *
+ *  move: if true, move from previous location. otherwise, search "location" for files (default: false) */
+suspend fun RpcClient.moveTorrent(ids: TorrentIds, location: File, move: Boolean = false) =
+    moveTorrent(ids, location.absolutePath, move)
+
+
+/** Moves torrents with the given id to the new location specified by [location].
+ *
+ *  move: if true, move from previous location. otherwise, search "location" for files (default: false) */
+suspend fun RpcClient.moveTorrent(ids: TorrentIds, location: String, move: Boolean = false) {
+    request(TorrentMoveRequest(ids, location, move))
+}
+
+// 3.7 renaming torrent path
+
+@Serializable
+internal data class TorrentRenameRequest(
+    val ids: TorrentIds,
+    val path: String,
+    val name: String
+) : RpcRequest<NullResponse>() {
+    override val method: String
+        get() = "torrent-rename-path"
+}
+
+/**
+ * Renames the file or directory specified by [path] to a new name, [name]. This function
+ * can't change the directory structure of the torrent files - it can only rename folders
+ * or files within it.
+ *
+ * Renaming the root folder of the torrent will also change the torrent name.
+ * This function can only be applied to 1 torrent at a time.
+ *
+ * As an example, say we have a torrent with structure:
+ * ```
+ *  /frobnitz-linux
+ *     - checksum
+ *     - frobnitz.iso
+ * ```
+ *
+ * so we have 2 total files:
+ *  - `/frobnitz-linux/checksum`
+ *  - `/frobnitz-linux/frobnitz.iso`
+ *
+ * Running:
+ *
+ * ```kt
+ * client.renameTorrent($id, "frobnitz-linux", "foo")
+ * ```
+ * will rename the folder `frobnitz-linux` to `foo`: thus, our
+ * directory structure becomes:
+ * ```
+ *  /foo
+ *     - checksum
+ *     - frobnitz.iso
+ * ```
+ *
+ * Our files are now `/foo/checksum` and `/foo/frobnitz.iso`
+ *
+ * Another example; running:
+ *
+ * ```kt
+ * client.renameTorrent($id, "frobnitz-linux/checksum", "foo")
+ * ```
+ *
+ * since `/frobnitz-linux/checksum` is a singular file, we only rename the file
+ * so the file name becomes `/frobnitz-linux/foo` (note that the new name `foo` is only
+ * the name within the directory, not from torrent root)
+ *
+ * Our file structure looks like:
+ * ```
+ *  /frobnitz-linux
+ *     - foo
+ *     - frobnitz.iso
+ * ```
+ *
+ * This function will return an error if [path] can't be found, [name] already exists
+ * or has a directory separator, or is invalid.
+ *
+ * [Docs](https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md#37-renaming-a-torrents-path)
+ * [Transmission Source](https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L898)
+ * [Python impl](https://github.com/trim21/transmission-rpc/blob/8cd8c22353adf85795a62687044526c5537fa516/transmission_rpc/client.py#L761)
+ * */
+suspend fun RpcClient.renameTorrent(id: TorrentId, path: String, name: String) {
+    request(TorrentRenameRequest(TorrentIds.IdList(id), path, name))
+}
