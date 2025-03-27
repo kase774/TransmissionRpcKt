@@ -145,7 +145,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
-     * Whether the download limit is honored
+     * Whether the [DownloadLimit] is honored
      *
      * transmission struct: tr_torrent */
     data object DownloadLimited : TorrentFields<Boolean>("downloadLimited") {
@@ -457,16 +457,16 @@ sealed class TorrentFields<T : Any>(
     /**
      *
      * transmission struct: tr_stat */
-    data object RateDownload : TorrentFields<Int>("rateDownload ") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object RateDownload : TorrentFields<Speed>("rateDownload") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): Speed? =
             torrentAccessorData.rateDownload.value
     }
 
     /**
      *
      * transmission struct: tr_stat */
-    data object RateUpload : TorrentFields<Int>("rateUpload ") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object RateUpload : TorrentFields<Speed>("rateUpload") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): Speed? =
             torrentAccessorData.rateUpload.value
     }
 
@@ -761,10 +761,10 @@ data class TorrentAccessorData(
     val primaryMimeType: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.QueuePosition] */
     val queuePosition: Optional<Int> = Optional.None(),
-    /** property corresponding to [TorrentFields.RateDownload (B/s)] */
-    val rateDownload: Optional<Int> = Optional.None(),
-    /** property corresponding to [TorrentFields.RateUpload (B/s)] */
-    val rateUpload: Optional<Int> = Optional.None(),
+    /** property corresponding to [TorrentFields.RateDownload] */
+    val rateDownload: Optional<@Serializable(with = Speed.ByteSerializer::class) Speed> = Optional.None(),
+    /** property corresponding to [TorrentFields.RateUpload] */
+    val rateUpload: Optional<@Serializable(with = Speed.ByteSerializer::class) Speed> = Optional.None(),
     /** property corresponding to [TorrentFields.RecheckProgress] */
     val recheckProgress: Optional<Double> = Optional.None(),
     /** property corresponding to [TorrentFields.SecondsDownloading] */

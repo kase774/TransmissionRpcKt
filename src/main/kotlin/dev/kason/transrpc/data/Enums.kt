@@ -1,5 +1,6 @@
 package dev.kason.transrpc.data
 
+import dev.kason.transrpc.data.TorrentRatioLimit.*
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -92,4 +93,24 @@ enum class TorrentRatioLimit(val id: Int) {
     }
 }
 
+@Serializable
+enum class TorrentStatus {
+    Stopped,
+    QueuedVerify,
+    Verifying,
+    QueuedDownload,
+    Downloading,
+    QueuedSeed,
+    Seeding;
+    object Serializer : KSerializer<TorrentStatus> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("TransmissionRpc.TorrentStatus", PrimitiveKind.INT)
+
+        override fun deserialize(decoder: Decoder): TorrentStatus =
+            entries[decoder.decodeInt()]
+
+        override fun serialize(encoder: Encoder, value: TorrentStatus) =
+            encoder.encodeInt(value.ordinal)
+    }
+}
 

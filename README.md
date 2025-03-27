@@ -41,7 +41,7 @@ Chapters: (direct implementation of rpc protocol in `dev.kason.transrpc.low`)
  - [ ] torrent requests (3)
    - [x] action (3.1)
    - [x] mutators (3.2)
-   - [ ] accessors (3.3) [in progress]
+   - [x] accessors (3.3) [untyped, typing in development]
    - [x] methods (3.4-) 
      - [x] adding (3.4)
      - [x] removing (3.5)
@@ -65,6 +65,12 @@ make management easier:
  - [ ] torrent wrapper
  - [ ] configurable caching system (lazy state updates)
  - [ ] session wrapper
+
+### Libraries used
+ - Kotlin logging wrapper around Slf4j, logback backend for logging
+ - Ktor for http requests
+ - Kotlinx serialization for serializing
+ - Kotlinx datetime for dates & time management
 
 ### Contributions
 

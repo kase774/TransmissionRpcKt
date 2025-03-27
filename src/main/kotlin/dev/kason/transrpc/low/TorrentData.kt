@@ -1,6 +1,10 @@
 package dev.kason.transrpc.low
 
+import dev.kason.transrpc.data.ByteCount
+import dev.kason.transrpc.data.Priority
+import dev.kason.transrpc.data.Speed
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -76,3 +80,64 @@ enum class TorrentErrorType(val value: Int) {
             encoder.encodeInt(value.value)
     }
 }
+
+/** a file object, according to 3.2 (properties from tr_file_view) */
+//　https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L1299
+@Serializable
+data class FileData(
+    /** The number of bytes we have already */
+    val bytesCompleted: ByteCount,
+    /** The total size of the file */
+    val length: ByteCount,
+    val name: String,
+    @SerialName("begin_piece")
+    /** the index of the first piece that is part of this file */
+    val beginPieceIndex: Int,
+    @SerialName("end_piece")
+    /** piece index where this file ends (exclusive) */
+    val endPieceIndex: Int
+)
+
+/** fileStats: a file's non-constant properties.
+ * An array of tr_info.filecount objects, in the same order as files. This class represents
+ * one of those objects */
+// don't really see why these should be 2 different objects, but the spec
+// gives us these as so :kagathink:
+@Serializable
+data class FileStatsData(
+    /** The number of bytes we have already */
+    val bytesCompleted: ByteCount,
+    val wanted: Boolean,
+    val priority: Priority
+)
+
+/** Represents the data for a peer */
+// https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L1172
+@Serializable
+data class PeerData(
+    // this is the only time we use address i think
+    // so no need to make a wrapper class for this
+    val address: String,
+    val clientName: String,
+    val clientIsChoked: Boolean,
+    val clientIsInterested: Boolean,
+    @SerialName("flagStr")
+    val flagString: String,
+    val isDownloadingFrom: Boolean,
+    val isEncrypted: Boolean,
+    val isIncoming: Boolean,
+    val isUploadingTo: Boolean,
+    val isUTP: Boolean,
+    val peerIsChocked: Boolean,
+    val peerIsInterested: Boolean,
+    val port: Int,
+    val progress: Double,
+    val rateToClient: @Serializable(with = Speed.ByteSerializer::class) Speed,
+    val rateToPeer: @Serializable(with = Speed.ByteSerializer::class) Speed
+)
+
+
+//@Serializable
+//data class PeersFromData(
+//
+//)
