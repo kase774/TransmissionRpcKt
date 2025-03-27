@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
 // this file implements 3.1
-enum class TorrentActionMethod(val methodName: String) {
+internal enum class TorrentActionMethod(val methodName: String) {
     Start("torrent-start"),
     StartNow("torrent-start-now"),
     Stop("torrent-stop"),
@@ -15,7 +15,7 @@ enum class TorrentActionMethod(val methodName: String) {
 }
 
 @Serializable
-data class TorrentActionRequest(
+internal data class TorrentActionRequest(
     @Transient
     val actionMethod: TorrentActionMethod = transientDefaultValueError(),
     val ids: TorrentIds = TorrentIds.All

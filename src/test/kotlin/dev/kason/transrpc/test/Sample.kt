@@ -8,7 +8,8 @@ import dev.kason.transrpc.low.getTorrentData
 
 suspend fun main() {
     val rpc = RpcClient()
-    rpc.getTorrentData(TorrentIds.All, listOf(TorrentFields.ErrorString)).map { it.debugString() }
+    rpc.getTorrentData(TorrentIds.All, listOf(TorrentFields.ActivityDate, TorrentFields.Name))
+        .sortedBy { it.activityDate.value!! }
+        .map { it.debugString() }
         .forEach(::println)
-
 }

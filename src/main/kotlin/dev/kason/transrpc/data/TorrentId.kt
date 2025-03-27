@@ -12,8 +12,13 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.*
 
-/** an id that represents a torrent (an item in a list torrent ids, based on id explanation in 3.1)
- * either a SHA1 hash string or a transmission int id */
+/** an id that can identify a torrent. this is either a transmission produced [SessionId], which
+ * is valid for that transmission daemon session, or a [ShaHash], which can be used across
+ * transmission daemon restarts.
+ *
+ * you can see the sha hash of a given transmission on the `Information` panel in the properties
+ * of a torrent in the ui.
+ * */
 @Serializable(with = TorrentId.Serializer::class)
 sealed interface TorrentId {
     /** represents a sha1 hash torrent id, stable between transmission daemon restarts */
@@ -47,20 +52,18 @@ sealed interface TorrentId {
 }
 
 /**
- * represents a possible `id` field, typically a group of torrents to apply an operation to
+ * represents a group of torrents to apply an operation to. there are 3 subclasses:
+ *  - [IdList], which represents a list of specific torrents by referencing their [TorrentId]
+ *  - [RecentlyActive], which represents torrents that were recently active (active in some way within
+ *  the last 60 seconds
+ *  - [All], which applies to all torrents
  *
- * All torrents are used if the `ids` argument is omitted. (All)
- *
- * `ids` should be one of the following:
- *
- *  - an integer referring to a torrent id (we ignore, just use IdList(num))
- *  - a list of torrent id numbers, SHA1 hash strings, or both (IdList)
- *  - a string, `recently-active`, for recently-active torrents (RecentlyActive)
+ * [Recently active threshold discussion](https://github.com/transmission/transmission/issues/809)
  * */
 @Serializable(with = TorrentIds.Serializer::class)
 sealed interface TorrentIds {
 
-    /** represents a list of torrent id numbers, SHA1 hash strings, or both (list of TorrentId) */
+    /** a list of specific torrents, referencing their unique [TorrentId] */
     @Serializable
     @JvmInline
     value class IdList(private val items: List<TorrentId>) : TorrentIds, List<TorrentId> by items {
@@ -70,17 +73,17 @@ sealed interface TorrentIds {
     }
 
     /** a [TorrentIds] that applies to all torrents that were recently active (pls define)  */
-    @Serializable(with = RecentlyAdded.Serializer::class)
-    data object RecentlyAdded : TorrentIds {
+    @Serializable(with = RecentlyActive.Serializer::class)
+    data object RecentlyActive : TorrentIds {
         // custom serializer to serialize recently added as a "recently-added" string
-        object Serializer : KSerializer<RecentlyAdded> {
+        object Serializer : KSerializer<RecentlyActive> {
             override val descriptor: SerialDescriptor =
-                PrimitiveSerialDescriptor("TransmissionRpc.RecentlyAdded", PrimitiveKind.STRING)
+                PrimitiveSerialDescriptor("TransmissionRpc.RecentlyActive", PrimitiveKind.STRING)
 
-            override fun serialize(encoder: Encoder, value: RecentlyAdded) =
-                encoder.encodeString("recently-added")
+            override fun serialize(encoder: Encoder, value: RecentlyActive) =
+                encoder.encodeString("recently-active")
 
-            override fun deserialize(decoder: Decoder): RecentlyAdded = RecentlyAdded
+            override fun deserialize(decoder: Decoder): RecentlyActive = RecentlyActive
         }
     }
 
@@ -107,7 +110,7 @@ sealed interface TorrentIds {
         override fun selectDeserializer(element: JsonElement): DeserializationStrategy<TorrentIds> {
             if (element is JsonArray) return IdList.serializer()
             if (element.jsonPrimitive.content == "recently-added") {
-                return RecentlyAdded.serializer()
+                return RecentlyActive.serializer()
             }
             error("invalid id list when deserializing: $element, should be either string `recently-added` or a list of ids")
         }

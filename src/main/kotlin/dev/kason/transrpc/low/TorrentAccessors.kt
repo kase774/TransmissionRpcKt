@@ -9,7 +9,7 @@ import kotlin.time.Duration
 // this file implements 3.3
 @Serializable
 sealed class TorrentFields<T : Any>(
-    val key: String
+    internal val key: String
 ) {
     abstract fun getValue(torrentAccessorData: TorrentAccessorData): T?
 
