@@ -15,7 +15,7 @@ enum class TorrentActionMethod(val methodName: String) {
 }
 
 @Serializable
-class TorrentActionRequest(
+data class TorrentActionRequest(
     @Transient
     val actionMethod: TorrentActionMethod = transientDefaultValueError(),
     val ids: TorrentIds = TorrentIds.All

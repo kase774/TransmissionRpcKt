@@ -10,17 +10,17 @@ import kotlinx.serialization.encoding.Encoder
 
 /** represents a priority that can be assigned to a torrent (tr_priority_t) */
 // https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L75
-@Serializable(with = TorrentPriority.Serializer::class)
-enum class TorrentPriority(val id: Int) {
+@Serializable(with = Priority.Serializer::class)
+enum class Priority(val id: Int) {
     Low(-1),
     Normal(0),
     High(1);
 
-    object Serializer : KSerializer<TorrentPriority> {
+    object Serializer : KSerializer<Priority> {
         override val descriptor: SerialDescriptor =
             PrimitiveSerialDescriptor("TransmissionRpc.TorrentPriority", PrimitiveKind.INT)
 
-        override fun deserialize(decoder: Decoder): TorrentPriority =
+        override fun deserialize(decoder: Decoder): Priority =
             when (decoder.decodeInt()) {
                 -1 -> Low
                 0 -> Normal
@@ -28,7 +28,7 @@ enum class TorrentPriority(val id: Int) {
                 else -> error("Unknown priority")
             }
 
-        override fun serialize(encoder: Encoder, value: TorrentPriority) =
+        override fun serialize(encoder: Encoder, value: Priority) =
             encoder.encodeInt(value.id)
     }
 }

@@ -9,9 +9,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class TorrentSetRequest(
     /** this torrent's bandwidth priority */
-    val bandwidthPriority: Optional<TorrentPriority> = Optional.None(),
+    val bandwidthPriority: Optional<Priority> = Optional.None(),
     /** maximum download speed (KBps) */
-    val downloadLimit: Optional<UInt> = Optional.None(),
+    val downloadLimit: Optional<Speed> = Optional.None(),
     /** true if downloadLimit is honored */
     val downloadLimited: Optional<Boolean> = Optional.None(),
     /** indices of file(s) to not download */
@@ -75,9 +75,9 @@ suspend fun RpcClient.sendTorrentSetProperties(setRequest: TorrentSetRequest) =
 suspend fun RpcClient.torrentSetProperties(
     ids: TorrentIds,
     /** this torrent's bandwidth priority */
-    bandwidthPriority: TorrentPriority? = null,
+    bandwidthPriority: Priority? = null,
     /** maximum download speed (KBps) */
-    downloadLimit: UInt? = null,
+    downloadLimit: Speed? = null,
     /** true if downloadLimit is honored */
     downloadLimited: Boolean? = null,
     /** indices of file(s) to not download */

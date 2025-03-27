@@ -67,8 +67,6 @@ sealed interface TorrentIds {
         constructor(vararg ids: TorrentId) : this(ids.toList())
         constructor(vararg ids: String) : this(ids.map { TorrentId.ShaHash(it) })
         constructor(vararg ids: Int) : this(ids.map { TorrentId.SessionId(it.toUInt()) })
-        @OptIn(ExperimentalUnsignedTypes::class)
-        constructor(vararg ids: UInt) : this(ids.map { TorrentId.SessionId(it) })
     }
 
     /** a [TorrentIds] that applies to all torrents that were recently active (pls define)  */

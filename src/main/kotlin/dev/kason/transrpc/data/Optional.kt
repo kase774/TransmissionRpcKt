@@ -18,11 +18,15 @@ sealed interface Optional<out T> {
 
     @JvmInline
     @Serializable
-    value class Some<T>(override val value: T) : Optional<T>
+    value class Some<T>(override val value: T) : Optional<T> {
+        override fun toString(): String = "Some($value)"
+    }
     @Serializable
     class None<T> private constructor() : Optional<T> {
         override val value: T?
             get() = null
+
+        override fun toString(): String = "None"
 
         companion object {
             private val none = None<Nothing>()
