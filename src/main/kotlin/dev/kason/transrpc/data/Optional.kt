@@ -8,8 +8,9 @@ import kotlinx.serialization.encoding.Encoder
 
 /** represents a value that may or may not be there. [None] represents
  * the lack of a value, while [Some] indicates that some value exists (similar to null).
- * this wrapper class functions well with kotlinx serialization; note that all
- * properties with an optional type should have [Optional.None] as their default */
+ * this wrapper class functions well with kotlinx serialization;
+ *
+ * !! NOTE that all properties with an optional type should have [Optional.None] as their default */
 // based on kordlib's optional impl
 @Serializable(with = Optional.Serializer::class)
 sealed interface Optional<out T> {
@@ -21,6 +22,7 @@ sealed interface Optional<out T> {
     value class Some<T>(override val value: T) : Optional<T> {
         override fun toString(): String = "Some($value)"
     }
+
     @Serializable
     class None<T> private constructor() : Optional<T> {
         override val value: T?
@@ -51,5 +53,7 @@ sealed interface Optional<out T> {
     }
 }
 
+/** Create an optional based on the value; if its null return [Optional.None] but
+ * if not, wrap the value */
 fun <T> Optional(value: T?): Optional<T> =
     if (value == null) Optional.None() else Optional.Some(value)

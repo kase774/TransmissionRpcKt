@@ -1,4 +1,4 @@
-### Transmission Rpc for Kotlin
+# Transmission Rpc for Kotlin
 This library offers a way for Kotlin applications to interact with an instance of
 [Transmission](https://transmissionbt.com/), a popular BitTorrent client, through the [Transmission RPC
 API](https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md).
@@ -28,6 +28,11 @@ If you configure the other options, be sure to update your connection string.
         TorrentIds.IdList("a0b1c2d3e4f56789dcbaa0b1c2d3e4f56789dcba"),
         seedRatioMode = TorrentRatioLimit.Global
     )
+
+    // returns TorrentAccessorData with the hash string property filled out
+    val data = client.getTorrentData(TorrentIds.All, listOf(TorrentFields.HashString))
+        // get the hash strings of each torrent!
+        .map { it.hashString }
 ```
 
 This library relies on Ktor for client connections, so it's advised that you know

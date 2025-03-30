@@ -11,6 +11,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
+import java.util.stream.IntStream.IntMapMultiConsumer
 
 /** each byte is set
  * to either -1 if we have the piece, otherwise it is set to the number
@@ -44,7 +45,6 @@ sealed interface TorrentAvailability {
 
         override fun serialize(encoder: Encoder, value: TorrentAvailability) =
             encoder.encodeInt(if (value is Downloading) value.numberOfPeersConnected else -1)
-
     }
 }
 
@@ -105,8 +105,9 @@ data class FileData(
 // gives us these as so :kagathink:
 @Serializable
 data class FileStatsData(
-    /** The number of bytes we have already */
+    /** The number of bytes we have already (should be same as [FileData.bytesCompleted]) */
     val bytesCompleted: ByteCount,
+    /** Whether we want this file or not */
     val wanted: Boolean,
     val priority: Priority
 )
@@ -128,7 +129,7 @@ data class PeerData(
     val isIncoming: Boolean,
     val isUploadingTo: Boolean,
     val isUTP: Boolean,
-    val peerIsChocked: Boolean,
+    val peerIsChoked: Boolean,
     val peerIsInterested: Boolean,
     val port: Int,
     val progress: Double,
@@ -137,7 +138,24 @@ data class PeerData(
 )
 
 
-//@Serializable
-//data class PeersFromData(
-//
-//)
+/** A data object that describes how many peers we got from various
+ * peer sources. see individual property KDocs for more details
+ *
+ * [struct tr_peer_from](https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L1398) */
+@Serializable
+data class PeersFromData(
+    /** assume is from_resume? peers found in the .resume file */
+    val fromCache: Int,
+    /** peers found from the DHT  */
+    val fromDht: Int,
+    /** connections made to the listening port */
+    val fromIncoming: Int,
+    /** peers found from local announcements */
+    val fromLpd: Int,
+    /** peers where peer address provided in an LTEP handshake */
+    val fromLtep: Int,
+    /** peers found from peer exchange  */
+    val fromPex: Int,
+    /** peers found from a tracker */
+    val fromTracker: Int
+)

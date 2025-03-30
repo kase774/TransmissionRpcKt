@@ -1,12 +1,20 @@
 package dev.kason.transrpc.low
 
+import dev.kason.transrpc.Base64ToBitsetSerializer
 import dev.kason.transrpc.data.*
+import dev.kason.transrpc.data.Optional
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.io.Serial
+import java.util.*
 import kotlin.time.Duration
 
 // this file implements 3.3
+/** Possible fields that we can request for a torrent (section 3.3) using
+ * [RpcClient.getTorrentData]. You can get the value of a given field
+ * for a [TorrentAccessorData] using the [getValue] method, which unwraps
+ * the optional for the property */
 @Serializable
 sealed class TorrentFields<T : Any>(
     internal val key: String
@@ -45,7 +53,8 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
-     * represents the [Priority] that this torrent has
+     * represents the [Priority] that this torrent has. higher priority means transmission
+     * places more emphasis on downloading this
      *
      * transmission struct: tr_priority_t */
     data object BandwidthPriority : TorrentFields<Priority>("bandwidthPriority") {
@@ -212,65 +221,89 @@ sealed class TorrentFields<T : Any>(
             torrentAccessorData.fileCount.value
     }
 
-    /**  */
-    data object Files : TorrentFields<List<Int>>("files") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /** A list of objects that describe the files that are contained within this torrent.
+     * Each object is of type [FileData] - the order of the file data objects within this list
+     * is based on the order of the files in the torrent itself. (indexed 0 to file count)
+     *
+     * file data struct: tr_file_view*/
+    data object Files : TorrentFields<List<FileData>>("files") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): List<FileData>? =
             torrentAccessorData.files.value
     }
 
-    /**  */
+    /**  A list of objects that describe the files' non-constant properties (or so the
+     * transmission documentation claims). Same thing as [Files]: a list of [FileStatsData] objects
+     * for each file in the torrent, in that order. (indexed 0 to file count)
+     *
+     * file data struct: tr_file_view (still) */
     data object FileStats : TorrentFields<List<Int>>("fileStats") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
             torrentAccessorData.fileStats.value
     }
 
-    /**  */
+    /** The group name of this torrent (tier that this torrent is in) */
     data object Group : TorrentFields<String>("group") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): String? =
             torrentAccessorData.group.value
     }
 
     /**
+     * the SHA1 hash string associated with this torrent. Automatically converted
+     * to a [TorrentId.ShaHash] for convenience, but the actual string itself
+     * can be accessible through [TorrentId.ShaHash.hash] if needed
      *
      * transmission struct: tr_torrent_view */
-    data object HashString : TorrentFields<String>("hashString") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): String? =
+    data object HashString : TorrentFields<TorrentId.ShaHash>("hashString") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): TorrentId.ShaHash? =
             torrentAccessorData.hashString.value
     }
 
     /**
+     * Byte count of all the partial piece data we have for this torrent.
+     * As pieces become complete, this value may decrease as portions of it
+     * are moved to `corrupt` or `haveValid`.
      *
      * transmission struct: tr_stat */
-    data object HaveUnchecked : TorrentFields<Int>("haveUnchecked") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object HaveUnchecked : TorrentFields<ByteCount>("haveUnchecked") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.haveUnchecked.value
     }
 
     /**
+     * Byte count of all the checksum-verified data we have for this torrent.
      *
      * transmission struct: tr_stat */
-    data object HaveValid : TorrentFields<Int>("haveValid") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object HaveValid : TorrentFields<ByteCount>("haveValid") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.haveValid.value
     }
 
     /**
+     * Whether this torrent will honor the session limits (honors the speed limit download
+     * speed limit, probably)
      *
-     * transmission struct: tr_torrent */
+     * transmission struct: tr_torrent
+     *
+     * [method that produces this value?](https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L492)
+     * */
     data object HonorsSessionLimits : TorrentFields<Boolean>("honorsSessionLimits") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): Boolean? =
             torrentAccessorData.honorsSessionLimits.value
     }
 
     /**
+     * The transmission session id for this torrent. See [TorrentId.SessionId]
+     * for more details.
      *
      * transmission struct: tr_torrent */
-    data object Id : TorrentFields<Int>("id") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object Id : TorrentFields<TorrentId.SessionId>("id") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): TorrentId.SessionId? =
             torrentAccessorData.id.value
     }
 
     /**
+     * A torrent is considered finished if it has met its seed ratio.
+     *         As a result, only paused torrents can be finished.
      *
      * transmission struct: tr_stat */
     data object IsFinished : TorrentFields<Boolean>("isFinished") {
@@ -279,6 +312,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * If this torrent is from a private tracker.
      *
      * transmission struct: tr_torrent */
     data object IsPrivate : TorrentFields<Boolean>("isPrivate") {
@@ -287,6 +321,8 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * True if the torrent is running, but has been idle for long enough
+     *         to be considered stalled.
      *
      * transmission struct: tr_stat */
     data object IsStalled : TorrentFields<Boolean>("isStalled") {
@@ -295,6 +331,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * A list of strings that describe the labels assigned to this torrent
      *
      * transmission struct: tr_torrent */
     data object Labels : TorrentFields<List<String>>("labels") {
@@ -303,20 +340,28 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     *Byte count of how much data is left to be downloaded until we've got
+     *         all the pieces that we want. [0...tr_stat.sizeWhenDone]
      *
      * transmission struct: tr_stat */
-    data object LeftUntilDone : TorrentFields<Int>("leftUntilDone") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object LeftUntilDone : TorrentFields<ByteCount>("leftUntilDone") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.leftUntilDone.value
     }
 
-    /**  */
+    /**
+     * The magnet link for this torrent (starts with magnet:?...)
+     * This exists even for torrents where you used a .torrent file,
+     * same as `Copy Magnet Link to Clipboard` option in transmission gtk
+     * */
     data object MagnetLink : TorrentFields<String>("magnetLink") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): String? =
             torrentAccessorData.magnetLink.value
     }
 
     /**
+     * Last time you manually announced this torrent, or -1 if you have never done so.
+     * (seems to be always -1 in testing though)
      *
      * transmission struct: tr_stat */
     data object ManualAnnounceTime : TorrentFields<Int>("manualAnnounceTime") {
@@ -325,15 +370,21 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The maximum number of peers this torrent can receive. Can be seen
+     * in `Properties > Options`. Identical to [PeerLimit]
      *
      * transmission struct: tr_torrent */
+    @Deprecated("use peer limit instead", ReplaceWith("PeerLimit"))
     data object MaxConnectedPeers : TorrentFields<Int>("maxConnectedPeers") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
             torrentAccessorData.maxConnectedPeers.value
     }
 
     /**
-     *
+     * How much of the metadata the torrent has.
+     * For torrents added from a torrent this will always be 1.
+     * For magnet links, this number will range from 0 to 1 as the metadata is downloaded.
+     * Range is [0..1]
      * transmission struct: tr_stat */
     data object MetadataPercentComplete : TorrentFields<Double>("metadataPercentComplete") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): Double? =
@@ -341,6 +392,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The string name of this torrent
      *
      * transmission struct: tr_torrent_view */
     data object Name : TorrentFields<String>("name") {
@@ -349,6 +401,8 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The maximum number of peers this torrent can receive. Can be seen
+     *      * in `Properties > Options`
      *
      * transmission struct: tr_torrent */
     data object PeerLimit : TorrentFields<Int>("peer-limit") {
@@ -356,13 +410,15 @@ sealed class TorrentFields<T : Any>(
             torrentAccessorData.peerLimit.value
     }
 
-    /**  */
-    data object Peers : TorrentFields<List<Int>>("peers") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /** contains [PeerData] objects that describe each peer;
+     * data from `tr_peer_stat` */
+    data object Peers : TorrentFields<List<PeerData>>("peers") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): List<PeerData>? =
             torrentAccessorData.peers.value
     }
 
     /**
+     * Number of peers that we're connected to
      *
      * transmission struct: tr_stat */
     data object PeersConnected : TorrentFields<Int>("peersConnected") {
@@ -370,13 +426,15 @@ sealed class TorrentFields<T : Any>(
             torrentAccessorData.peersConnected.value
     }
 
-    /**  */
-    data object PeersFrom : TorrentFields<List<String>>("peersFrom") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<String>? =
+    /** A [PeersFromData] object that describes how many peers we
+     * got from various sources */
+    data object PeersFrom : TorrentFields<PeersFromData>("peersFrom") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): PeersFromData? =
             torrentAccessorData.peersFrom.value
     }
 
     /**
+     * Number of peers that we're sending data to
      *
      * transmission struct: tr_stat */
     data object PeersGettingFromUs : TorrentFields<Int>("peersGettingFromUs") {
@@ -385,6 +443,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Number of peers that are sending data to us.
      *
      * transmission struct: tr_stat */
     data object PeersSendingToUs : TorrentFields<Int>("peersSendingToUs") {
@@ -393,6 +452,13 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * How much has been downloaded of the entire torrent.
+     *
+     * Range is [0..1]
+     *
+     * (Note that if we do not want the entire file this will never reach 1 -
+     * if you want a percentage for the progress out of the files that the user wants,
+     * see [PercentDone])
      *
      * transmission struct: tr_stat */
     data object PercentComplete : TorrentFields<Double>("percentComplete") {
@@ -401,6 +467,10 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * How much has been downloaded of the files the user wants. This differs
+     * from `percentComplete` if the user wants only some of the torrent's files.
+     *
+     * Range is [0..1]
      *
      * transmission struct: tr_stat */
     data object PercentDone : TorrentFields<Double>("percentDone") {
@@ -409,14 +479,29 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * A bitset that represents whether we have a given piece. For example
+     * ```
+     * val bitset = rpc.getTorrentData(..., listOf(Pieces))[0].pieces.value!!
+     * bitset[0] // <-- if we have the 1st piece
+     * bitset[1] // <-- if we have the 2nd piece
+     * bitset[n] // <-- if we have the n+1th piece (0 indexed)
+     * ```
+     *
+     * Note that a bitset IS mutable; it would be best to not mutate the bitset
+     * after so that the data can be used for longer, but doing won't impact the library.
+     * Also, the bitset is not continuously updated; if you want that check out the
+     * higher-level API (coming soon)
      *
      * transmission struct: tr_torrent */
-    data object Pieces : TorrentFields<String>("pieces") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): String? =
+    data object Pieces : TorrentFields<BitSet>("pieces") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): BitSet? =
             torrentAccessorData.pieces.value
     }
 
     /**
+     * The number of pieces in this torrent.
+     *
+     * [Piece def](https://en.wikipedia.org/wiki/Glossary_of_BitTorrent_terms#Piece)
      *
      * transmission struct: tr_torrent_view */
     data object PieceCount : TorrentFields<Int>("pieceCount") {
@@ -425,6 +510,9 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The sizes of pieces in this torrent. There are also [PieceSize] pieces.
+     *
+     * [Piece def](https://en.wikipedia.org/wiki/Glossary_of_BitTorrent_terms#Piece)
      *
      * transmission struct: tr_torrent_view */
     data object PieceSize : TorrentFields<Int>("pieceSize") {
@@ -432,13 +520,16 @@ sealed class TorrentFields<T : Any>(
             torrentAccessorData.pieceSize.value
     }
 
-    /**  */
-    data object Priorities : TorrentFields<List<Int>>("priorities") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /** An array of [FileCount] [Priority]s that indicate the priority given
+     * to that file in the torrent */
+    data object Priorities : TorrentFields<List<Priority>>("priorities") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Priority>? =
             torrentAccessorData.priorities.value
     }
 
     /**
+     * Return the mime-type (e.g. "audio/x-flac") that matches more of the
+     *         torrent's content than any other mime-type
      *
      * transmission struct: tr_torrent */
     data object PrimaryMimeType : TorrentFields<String>("primary-mime-type") {
@@ -447,6 +538,10 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * This torrent's queue position.
+     * All torrents have a queue position, even if it's not queued.
+     *
+     * Lowest queue position is 0, not 1
      *
      * transmission struct: tr_stat */
     data object QueuePosition : TorrentFields<Int>("queuePosition") {
@@ -455,6 +550,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     *
      *
      * transmission struct: tr_stat */
     data object RateDownload : TorrentFields<Speed>("rateDownload") {
@@ -652,6 +748,13 @@ sealed class TorrentFields<T : Any>(
 // table parsing sounds very difficult for kotlinx serialization
 // so even though json parsing is less efficient, we'll have to do that
 
+/** A data object that represents the results of an access request, containing
+ * all the possible fields on a torrent. All the properties
+ * here are [Optional]s; if the given property was requested, then the value
+ * will be [Optional.Some] with the given value, but if not it will be [Optional.None].
+ *
+ * see [RpcClient.getTorrentData] for more information. Documentation for what each field
+ * does is in [TorrentFields]. */
 @Serializable
 data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.ActivityDate] */
@@ -689,28 +792,28 @@ data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.ErrorString] */
     val errorString: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.Eta] */
-    val eta: Optional<Duration> = Optional.None(),
+    val eta: Optional<@Serializable(with = DurationSerializer::class) Duration> = Optional.None(),
     /** property corresponding to [TorrentFields.EtaIdle] */
-    val etaIdle: Optional<Duration> = Optional.None(),
+    val etaIdle: Optional<@Serializable(with = DurationSerializer::class) Duration> = Optional.None(),
     /** property corresponding to [TorrentFields.FileCount] */
     @SerialName("file-count")
     val fileCount: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.Files] */
-    val files: Optional<List<Int>> = Optional.None(),
+    val files: Optional<List<FileData>> = Optional.None(),
     /** property corresponding to [TorrentFields.FileStats] */
     val fileStats: Optional<List<Int>> = Optional.None(),
     /** property corresponding to [TorrentFields.Group] */
     val group: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.HashString] */
-    val hashString: Optional<String> = Optional.None(),
+    val hashString: Optional<TorrentId.ShaHash> = Optional.None(),
     /** property corresponding to [TorrentFields.HaveUnchecked] */
-    val haveUnchecked: Optional<Int> = Optional.None(),
+    val haveUnchecked: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.HaveValid] */
-    val haveValid: Optional<Int> = Optional.None(),
+    val haveValid: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.HonorsSessionLimits] */
     val honorsSessionLimits: Optional<Boolean> = Optional.None(),
     /** property corresponding to [TorrentFields.Id] */
-    val id: Optional<Int> = Optional.None(),
+    val id: Optional<TorrentId.SessionId> = Optional.None(),
     /** property corresponding to [TorrentFields.IsFinished] */
     val isFinished: Optional<Boolean> = Optional.None(),
     /** property corresponding to [TorrentFields.IsPrivate] */
@@ -720,7 +823,7 @@ data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.Labels] */
     val labels: Optional<List<String>> = Optional.None(),
     /** property corresponding to [TorrentFields.LeftUntilDone] */
-    val leftUntilDone: Optional<Int> = Optional.None(),
+    val leftUntilDone: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.MagnetLink] */
     val magnetLink: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.ManualAnnounceTime] */
@@ -735,11 +838,11 @@ data class TorrentAccessorData(
     @SerialName("peer-limit")
     val peerLimit: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.Peers] */
-    val peers: Optional<List<Int>> = Optional.None(),
+    val peers: Optional<List<PeerData>> = Optional.None(),
     /** property corresponding to [TorrentFields.PeersConnected] */
     val peersConnected: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.PeersFrom] */
-    val peersFrom: Optional<List<String>> = Optional.None(),
+    val peersFrom: Optional<PeersFromData> = Optional.None(),
     /** property corresponding to [TorrentFields.PeersGettingFromUs] */
     val peersGettingFromUs: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.PeersSendingToUs] */
@@ -749,13 +852,13 @@ data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.PercentDone] */
     val percentDone: Optional<Double> = Optional.None(),
     /** property corresponding to [TorrentFields.Pieces] */
-    val pieces: Optional<String> = Optional.None(),
+    val pieces: Optional<@Serializable(with = Base64ToBitsetSerializer::class) BitSet> = Optional.None(),
     /** property corresponding to [TorrentFields.PieceCount] */
     val pieceCount: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.PieceSize] */
     val pieceSize: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.Priorities] */
-    val priorities: Optional<List<Int>> = Optional.None(),
+    val priorities: Optional<List<Priority>> = Optional.None(),
     /** property corresponding to [TorrentFields.PrimaryMimeType] */
     @SerialName("primary-mime-type")
     val primaryMimeType: Optional<String> = Optional.None(),
@@ -813,16 +916,21 @@ data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.WebseedsSendingToUs] */
     val webseedsSendingToUs: Optional<Int> = Optional.None(),
 ) {
-    fun debugString(): String {
-        val properties = toString().substringAfter('(').substringBeforeLast(')')
-            .split(", ")
-        return properties.filter { !it.endsWith("=None") }
-            .joinToString(prefix = "{", postfix = "}") {
-                // remove the extraneous Some(...) surrounding the content
-                it.substringBefore("=") + ":" +
-                        it.substringAfter("Some(").dropLast(1)
+    /** A debug toString() method that outputs only the properties that are not set
+     * to None */
+    fun debugString(): String = buildString {
+        append("{")
+        TorrentFields::class.sealedSubclasses.forEach {
+            val x = it.objectInstance!!.getValue(this@TorrentAccessorData)
+            if (x != null) {
+                append(it.simpleName!!.replaceFirstChar(Char::lowercase))
+                    .append(":")
+                    .append(x)
+                    .append(",")
             }
+        }
     }
+
 }
 
 @Serializable
@@ -835,9 +943,25 @@ internal data class TorrentAccessorRequest(
 }
 
 @Serializable
-class TorrentAccessorResponse(val torrents: List<TorrentAccessorData>) :
+internal class TorrentAccessorResponse(val torrents: List<TorrentAccessorData>) :
     List<TorrentAccessorData> by torrents, RpcResponse
 
+/** Returns a list of [TorrentAccessorData] for each torrent specified by [ids] in the order
+ * specified, with the fields specified by [fields] set ([TorrentFields])
+ *
+ * Example:
+ * ```
+ *   // returns TorrentAccessorData with the hash string property filled out
+ *     val data = client.getTorrentData(TorrentIds.All, listOf(TorrentFields.HashString))
+ *     // data is a List<TorrentAccessorData> with only the TorrentAccessorData.hashString populated
+ *     // if we ended the statement here
+ *          .map { it.hashString.value!! }
+ *          // hashString is of type Optional<ShaHash>, so we can map to a List<ShaHash> this way
+ * ```
+ *
+ * Beware that all the properties for [TorrentAccessorData] are optionals, with [Optional.None] indicating
+ * that the given property wasn't requested in fields.
+ * */
 suspend fun RpcClient.getTorrentData(ids: TorrentIds, fields: List<TorrentFields<*>>): List<TorrentAccessorData> {
-    return request(TorrentAccessorRequest(ids, fields.map { it.key })).torrents
+    return request(TorrentAccessorRequest(ids, fields.map { it.key }.toSet().toList())).torrents
 }

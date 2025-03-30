@@ -11,7 +11,10 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlin.math.roundToLong
 
-/** Represents a counter for the number of bytes (such as sizes of stuff, for example) */
+/** Represents a counter for the number of bytes (such as sizes of stuff, for example)
+ *
+ * Helper properties for simple conversion between counters: [kiloBytes], [megaBytes],
+ * [gigaBytes], [teraBytes]*/
 @Serializable
 @JvmInline
 value class ByteCount(val bytes: Long) {

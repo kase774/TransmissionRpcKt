@@ -9,7 +9,8 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-/** represents a priority that can be assigned to a torrent (tr_priority_t) */
+/** represents a priority that can be assigned to a torrent (tr_priority_t). higher priority
+ * means that transmission will place more emphasis on downloading this file / torrent*/
 // https://github.com/transmission/transmission/blob/main/libtransmission/transmission.h#L75
 @Serializable(with = Priority.Serializer::class)
 enum class Priority(val id: Int) {

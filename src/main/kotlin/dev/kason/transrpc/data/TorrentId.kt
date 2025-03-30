@@ -35,7 +35,9 @@ sealed interface TorrentId {
         }
     }
 
-    /** represents an int torrent id, NOT stable between transmission daemon restarts. */
+    /** represents an int that transmission assigns to each torrent per session. This is not stable
+     * across transmission daemon restarts though - the same int may not always point to the
+     * same torrent if we restart the session. */
     @JvmInline
     @Serializable
     value class SessionId(val id: UInt) : TorrentId

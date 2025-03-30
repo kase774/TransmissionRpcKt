@@ -18,10 +18,18 @@ import kotlinx.serialization.json.*
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
+/** The transmission connection url if you opened the server locally and changed
+ * no settings. You can also use this as a sort of basis for your own url -
+ * substitute your own:
+ *  - port
+ *  - host (if not local, for ex)
+ *  - protocol (https??) */
 val defaultTransmissionUrl = Url("http://localhost:9091/transmission/rpc")
 const val CSRF_HEADER = "X-Transmission-Session-Id"
 const val COMPATIBLE_VERSION = "4.0.6"
 
+/** Creates a simple [HttpClient] that has the timeout specified, and simply logs
+ * all the requests.  */
 fun createSimpleHttpClient(timeout: Duration = 5.seconds): HttpClient = HttpClient {
     install(HttpTimeout) {
         requestTimeoutMillis = timeout.inWholeMilliseconds
@@ -43,6 +51,7 @@ private val defaultJson = Json { encodeDefaults = true }
  * of the request, as per chapter 2.1 */
 @Serializable(with = RpcRequest.Serializer::class)
 sealed class RpcRequest<T : RpcResponse> {
+    /** the method name, ie `torrent-start` */
     abstract val method: String
 
     object Serializer : JsonContentPolymorphicSerializer<RpcRequest<*>>(RpcRequest::class) {
@@ -61,12 +70,26 @@ sealed interface RpcResponse
 data object NullResponse : RpcResponse
 
 /** A lower level client that directly executes transactions with the server
- * through direct requests. */
+ * through direct requests. Most direct actions are executed as extension functions
+ * on this class.
+ *
+ * Uses the specified [HttpClient] to perform requests (by default this is a barebones
+ * client that logs requests and has a 5-second timeout, from [createSimpleHttpClient]). you can also pass in your own client,
+ * which can be configured in a lot of ways through Ktor's plugin system.
+ *
+ * [transmissionUrl] specifies which url to connect to; by default this is [defaultTransmissionUrl], which is a local
+ * transmission client without changing any settings.
+ *
+ * If you have enabled authentication on your transmission daemon, make sure that the username and password fields
+ * are set to the correct values!
+ * */
 class RpcClient(
     val httpClient: HttpClient = createSimpleHttpClient(),
     val transmissionUrl: Url = defaultTransmissionUrl,
     username: String? = null,
     password: String? = null,
+    /** the logger used to log messages (not the same as the logger used by the http client to log
+     * requests!) */
     val logger: KLogger = rpcClientLogger,
     /** The json used to serialize content. encodeDefaults should be `false`; setting it to `true`
      * will cause numerous errors */
@@ -77,7 +100,7 @@ class RpcClient(
 
     init {
         if (username != null && password != null) {
-            require(':' !in username){
+            require(':' !in username) {
                 "Username can't contain `:`, can't be encoded for basic authentication!"
             }
             val encoded = "$username:$password".encodeBase64()
@@ -116,7 +139,7 @@ class RpcClient(
                 else "incorrect username & password for auth!"
             )
 
-            HttpStatusCode.Forbidden -> throw TransmissionAuthException("ip whitelist blocks this ip; disable ip or add your ip to whitelist (Preferences > Remote)")
+            HttpStatusCode.Forbidden -> throw TransmissionAuthException("ip whitelist blocks this ip; disable ip or add your ip to whitelist (go to Preferences > Remote)")
         }
         val responseText = response.bodyAsText()
         return convertToResponse(responseText)
