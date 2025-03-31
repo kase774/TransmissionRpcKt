@@ -60,7 +60,7 @@ sealed interface TorrentId {
  *  the last 60 seconds
  *  - [All], which applies to all torrents
  *
- * [Recently active threshold discussion](https://github.com/transmission/transmission/issues/809)
+ * [what does recently active mean?](https://github.com/transmission/transmission/issues/809)
  * */
 @Serializable(with = TorrentIds.Serializer::class)
 sealed interface TorrentIds {

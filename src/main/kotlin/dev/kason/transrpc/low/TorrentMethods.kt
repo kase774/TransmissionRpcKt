@@ -44,6 +44,10 @@ internal data class TorrentAddRequest(
         get() = "torrent-add"
 }
 
+/**
+ * Describes the results of adding a torrent
+ *  - [id] is the [TorrentId.SessionId] that transmission creates for this torrent
+ *  - [name] is the name of the torrent (see [TorrentFields.Name])*/
 @Serializable(with = TorrentAddedResult.Serializer::class)
 data class TorrentAddedResult(
     val id: TorrentId.SessionId,
@@ -99,33 +103,42 @@ internal fun formatCookies(cookies: Map<String, String>) =
         "${it.key}=${it.value}"
     }
 
-/** add a torrent from a torrent file */
+/**
+ * adds a torrent from the given torrent [file].
+ *
+ * All parameters, except for the file, are optional. If not included, they will default to
+ * session defaults (normal priority, all files with normal priority, no sequential download,
+ * not paused, session download path & peer limit)
+ *
+ * returns a [TorrentAddedResult] that describes the results of this call
+ *
+ * @param file the torrent file (should be of type .torrent or .torrent.added)
+ * @param cookies map of cookies to be sent along with the request if needed
+ * @param downloadDir path to download the torrent to
+ * @param labels array of string labels
+ * @param paused if true, don't start the torrent immediately
+ * @param peerLimit maximum number of peers
+ * @param bandwidthPriority torrent's bandwidth [Priority]
+ * @param filesWanted indices of file(s) to download
+ * @param filesUnwanted indices of file(s) to NOT download
+ * @param priorityHigh indices of high-priority file(s)
+ * @param priorityLow indices of low-priority file(s)
+ * @param priorityNormal indices of normal-priority file(s)
+ * @param sequentialDownload if true, download torrent pieces sequentially
+ * */
 suspend fun RpcClient.addTorrentFromFile(
-    /** filename of the .torrent file */
     file: File,
-    /** pointer to a string of one or more cookies. */
     cookies: Map<String, String>? = null,
-    /** path to download the torrent to */
     downloadDir: File? = null,
-    /** array of string labels */
     labels: List<Int>? = null,
-    /** if true, don't start the torrent */
     paused: Boolean? = null,
-    /** maximum number of peers */
     peerLimit: Int? = null,
-    /** torrent's bandwidth tr_priority_t */
     bandwidthPriority: Priority? = null,
-    /** indices of file(s) to download */
     filesWanted: List<Int>? = null,
-    /** indices of file(s) to not download */
     filesUnwanted: List<Int>? = null,
-    /** indices of high-priority file(s) */
     priorityHigh: List<Int>? = null,
-    /** indices of low-priority file(s) */
     priorityLow: List<Int>? = null,
-    /** indices of normal-priority file(s) */
     priorityNormal: List<Int>? = null,
-    /** download torrent pieces sequentially */
     sequentialDownload: Boolean? = null
 ): TorrentAddedResult {
     require(file.exists()) { "file does not exist" }
@@ -146,33 +159,41 @@ suspend fun RpcClient.addTorrentFromFile(
     )
 }
 
-/** add a torrent from a torrent file */
+/** adds a torrent from the url. The url can be a magnet link or a link to a torrent file.
+ *
+ * All parameters, except for url, are optional. If not included, they will default to
+ * session defaults (normal priority, all files with normal priority, no sequential download,
+ * not paused, session download path & peer limit)
+ *
+ * returns a [TorrentAddedResult] that describes the results of this call
+ *
+ * @param url the link to the torrent file, or a magnet link
+ * @param cookies map of cookies to be sent along with the request if needed
+ * @param downloadDir path to download the torrent to
+ * @param labels array of string labels
+ * @param paused if true, don't start the torrent immediately
+ * @param peerLimit maximum number of peers
+ * @param bandwidthPriority torrent's bandwidth [Priority]
+ * @param filesWanted indices of file(s) to download
+ * @param filesUnwanted indices of file(s) to NOT download
+ * @param priorityHigh indices of high-priority file(s)
+ * @param priorityLow indices of low-priority file(s)
+ * @param priorityNormal indices of normal-priority file(s)
+ * @param sequentialDownload if true, download torrent pieces sequentially
+ * */
 suspend fun RpcClient.addTorrentFromUrl(
-    /** URL of the .torrent file */
     url: String,
-    /** pointer to a string of one or more cookies. */
     cookies: Map<String, String>? = null,
-    /** path to download the torrent to */
     downloadDir: File? = null,
-    /** array of string labels */
     labels: List<Int>? = null,
-    /** if true, don't start the torrent */
     paused: Boolean? = null,
-    /** maximum number of peers */
     peerLimit: Int? = null,
-    /** torrent's bandwidth tr_priority_t */
     bandwidthPriority: Priority? = null,
-    /** indices of file(s) to download */
     filesWanted: List<Int>? = null,
-    /** indices of file(s) to not download */
     filesUnwanted: List<Int>? = null,
-    /** indices of high-priority file(s) */
     priorityHigh: List<Int>? = null,
-    /** indices of low-priority file(s) */
     priorityLow: List<Int>? = null,
-    /** indices of normal-priority file(s) */
     priorityNormal: List<Int>? = null,
-    /** download torrent pieces sequentially */
     sequentialDownload: Boolean? = null
 ) = request(
     TorrentAddRequest(
@@ -195,33 +216,42 @@ suspend fun RpcClient.addTorrentFromUrl(
 
 private const val VALID_BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
 
-/** add a torrent from a torrent file */
+/** adds a torrent from base64 encoded torrent content (surely no one uses this function
+ * right)
+ *
+ * All parameters, except for metainfo, are optional. If not included, they will default to
+ * session defaults (normal priority, all files with normal priority, no sequential download,
+ * not paused, session download path & peer limit)
+ *
+ * returns a [TorrentAddedResult] that describes the results of this call
+ *
+ * @param metainfo base64-encoded .torrent content
+ * @param cookies map of cookies to be sent along with the request if needed
+ * @param downloadDir path to download the torrent to
+ * @param labels array of string labels
+ * @param paused if true, don't start the torrent immediately
+ * @param peerLimit maximum number of peers
+ * @param bandwidthPriority torrent's bandwidth [Priority]
+ * @param filesWanted indices of file(s) to download
+ * @param filesUnwanted indices of file(s) to NOT download (note that this is exclusive with filesWanted 多分)
+ * @param priorityHigh indices of high-priority file(s)
+ * @param priorityLow indices of low-priority file(s)
+ * @param priorityNormal indices of normal-priority file(s)
+ * @param sequentialDownload if true, download torrent pieces sequentially
+ * */
 suspend fun RpcClient.addTorrentFromBase64EncodedContent(
-    /** base64-encoded .torrent content */
     metainfo: String,
-    /** pointer to a string of one or more cookies. */
     cookies: Map<String, String>? = null,
-    /** path to download the torrent to */
     downloadDir: File? = null,
-    /** array of string labels */
     labels: List<Int>? = null,
-    /** if true, don't start the torrent */
     paused: Boolean? = null,
-    /** maximum number of peers */
     peerLimit: Int? = null,
-    /** torrent's bandwidth tr_priority_t */
     bandwidthPriority: Priority? = null,
-    /** indices of file(s) to download */
     filesWanted: List<Int>? = null,
-    /** indices of file(s) to not download */
     filesUnwanted: List<Int>? = null,
-    /** indices of high-priority file(s) */
     priorityHigh: List<Int>? = null,
-    /** indices of low-priority file(s) */
     priorityLow: List<Int>? = null,
-    /** indices of normal-priority file(s) */
     priorityNormal: List<Int>? = null,
-    /** download torrent pieces sequentially */
     sequentialDownload: Boolean? = null
 ): TorrentAddedResult {
     require(metainfo.all { it in VALID_BASE64_CHARS }) { "invalid base64 metainfo string!" }
@@ -281,14 +311,14 @@ internal data class TorrentMoveRequest(
 
 /** Moves torrents with the given id to the new location specified by [location].
  *
- *  move: if true, move from previous location. otherwise, search "location" for files (default: false) */
+ *  move: if true, move files from previous location. otherwise, search "location" for files (default: false) */
 suspend fun RpcClient.moveTorrent(ids: TorrentIds, location: File, move: Boolean = false) =
     moveTorrent(ids, location.absolutePath, move)
 
 
 /** Moves torrents with the given id to the new location specified by [location].
  *
- *  move: if true, move from previous location. otherwise, search "location" for files (default: false) */
+ *  move: if true, move files from previous location. otherwise, search "location" for files (default: false) */
 suspend fun RpcClient.moveTorrent(ids: TorrentIds, location: String, move: Boolean = false) {
     request(TorrentMoveRequest(ids, location, move))
 }

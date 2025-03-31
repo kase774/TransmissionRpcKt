@@ -2,6 +2,7 @@ package dev.kason.transrpc
 
 import io.ktor.util.*
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.IntArraySerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -28,5 +29,27 @@ internal object Base64ToBitsetSerializer: KSerializer<BitSet> {
 
     override fun serialize(encoder: Encoder, value: BitSet) {
         encoder.encodeString(value.toByteArray().encodeBase64())
+    }
+}
+
+// for the pieces property which is serialized as base64
+internal object BinaryArrayToBitsetSerializer: KSerializer<BitSet> {
+    private val delegate = IntArraySerializer()
+    override val descriptor: SerialDescriptor = SerialDescriptor("TransmissionRpc.BinaryBitset", delegate.descriptor)
+
+    override fun deserialize(decoder: Decoder): BitSet {
+        val data = decoder.decodeSerializableValue(delegate)
+        val result = BitSet(data.size)
+        for ((index, i) in data.withIndex()) {
+            result[index] = (data[i] == 1)
+        }
+        return result
+    }
+
+    override fun serialize(encoder: Encoder, value: BitSet) {
+        val data = IntArray(value.size()) {
+            if(value[it]) 1 else 0
+        }
+        encoder.encodeSerializableValue(delegate, data)
     }
 }

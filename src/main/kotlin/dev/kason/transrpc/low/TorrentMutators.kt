@@ -44,10 +44,10 @@ data class TorrentSetRequest(
     val normalPriorityFiles: Optional<List<Int>> = Optional.None(),
     /** position of this torrent in its queue [0...n) */
     val queuePosition: Optional<Int> = Optional.None(),
-    /** torrent-level number of minutes of seeding inactivity */
+    /** number of minutes of idle time before we stop seeding. See [TorrentFields.SeedIdleLimit] */
     val seedIdleLimit: Optional<Int> = Optional.None(),
-    /** which seeding inactivity to use. See tr_idlelimit */
-    val seedIdleMode: Optional<TorrentIdleLimit> = Optional.None(),
+    /** which seeding inactivity to use. See [TorrentIdleMode] */
+    val seedIdleMode: Optional<TorrentIdleMode> = Optional.None(),
     /** torrent-level seeding ratio */
     val seedRatioLimit: Optional<Double> = Optional.None(),
     /** which ratio to use. See tr_ratiolimit */
@@ -105,7 +105,7 @@ suspend fun RpcClient.torrentSetProperties(
     /** torrent-level number of minutes of seeding inactivity */
     seedIdleLimit: Int? = null,
     /** which seeding inactivity to use. See tr_idlelimit */
-    seedIdleMode: TorrentIdleLimit? = null,
+    seedIdleMode: TorrentIdleMode? = null,
     /** torrent-level seeding ratio */
     seedRatioLimit: Double? = null,
     /** which ratio to use. See tr_ratiolimit */

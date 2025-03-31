@@ -1,12 +1,12 @@
 package dev.kason.transrpc.low
 
 import dev.kason.transrpc.Base64ToBitsetSerializer
+import dev.kason.transrpc.BinaryArrayToBitsetSerializer
 import dev.kason.transrpc.data.*
 import dev.kason.transrpc.data.Optional
 import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import java.io.Serial
 import java.util.*
 import kotlin.time.Duration
 
@@ -392,7 +392,8 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
-     * The string name of this torrent
+     * The string name of this torrent; for example
+     *
      *
      * transmission struct: tr_torrent_view */
     data object Name : TorrentFields<String>("name") {
@@ -550,23 +551,34 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Speed all piece being received for this torrent.
+     * This ONLY counts piece data.
      *
-     *
-     * transmission struct: tr_stat */
+     * transmission struct: tr_stat (probably float pieceDownloadSpeed_KBps) */
     data object RateDownload : TorrentFields<Speed>("rateDownload") {
+        // funny since they store these as floats in kbps, but multiply them by
+        // 1000 to get the number of bytes per second to send to us...
+        // why not just keep as kbps and send us that :kagathink:
         override fun getValue(torrentAccessorData: TorrentAccessorData): Speed? =
             torrentAccessorData.rateDownload.value
     }
 
     /**
+     * Speed all piece being sent for this torrent.
+     * This ONLY counts piece data.
      *
-     * transmission struct: tr_stat */
+     * transmission struct: tr_stat (probably float pieceUploadSpeed_KBps) */
     data object RateUpload : TorrentFields<Speed>("rateUpload") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): Speed? =
             torrentAccessorData.rateUpload.value
     }
 
     /**
+     * When [TorrentFields.Status] is [TorrentStatus.QueuedVerify] or
+     * [TorrentStatus.QueuedVerify],
+     *         this is the percentage of how much of the files has been
+     *         verified. When it gets to 1, the verify process is done.
+     *         Range is [0..1]
      *
      * transmission struct: tr_stat */
     data object RecheckProgress : TorrentFields<Double>("recheckProgress") {
@@ -575,22 +587,28 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Cumulative duration the torrent's ever spent downloading
+     * (second precision)
      *
      * transmission struct: tr_stat */
-    data object SecondsDownloading : TorrentFields<Int>("secondsDownloading") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object SecondsDownloading : TorrentFields<Duration>("secondsDownloading") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): Duration? =
             torrentAccessorData.secondsDownloading.value
     }
 
     /**
+     * Cumulative duration the torrent's ever spent seeding (second precision)
      *
      * transmission struct: tr_stat */
-    data object SecondsSeeding : TorrentFields<Int>("secondsSeeding") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object SecondsSeeding : TorrentFields<Duration>("secondsSeeding") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): Duration? =
             torrentAccessorData.secondsSeeding.value
     }
 
     /**
+     * The number of minutes of being idle before the torrent stops
+     * attempting to seed. This setting is only active if the [SeedIdleMode] is
+     * set to [TorrentIdleMode.Single]
      *
      * transmission struct: tr_torrent */
     data object SeedIdleLimit : TorrentFields<Int>("seedIdleLimit") {
@@ -599,14 +617,17 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The [TorrentIdleMode] for this torrent.
      *
      * transmission struct: tr_inactivelimit */
-    data object SeedIdleMode : TorrentFields<Int>("seedIdleMode") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object SeedIdleMode : TorrentFields<TorrentIdleMode>("seedIdleMode") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): TorrentIdleMode? =
             torrentAccessorData.seedIdleMode.value
     }
 
     /**
+     * Torrent level seeding ratio. This is only applied if [SeedRatioMode] is
+     * [TorrentRatioLimit.Single]
      *
      * transmission struct: tr_torrent */
     data object SeedRatioLimit : TorrentFields<Double>("seedRatioLimit") {
@@ -615,14 +636,17 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * The [TorrentRatioLimit] for this torrent.
      *
      * transmission struct: tr_ratiolimit */
-    data object SeedRatioMode : TorrentFields<Int>("seedRatioMode") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object SeedRatioMode : TorrentFields<TorrentRatioLimit>("seedRatioMode") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): TorrentRatioLimit? =
             torrentAccessorData.seedRatioMode.value
     }
 
     /**
+     * A boolean describing whether pieces for this torrent must be downloaded
+     * sequentially (aka starting from the start towards the end without jumps)
      *
      * transmission struct: tr_torrent */
     data object SequentialDownload : TorrentFields<Boolean>("sequential_download") {
@@ -631,14 +655,19 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Byte count of all the piece data we'll have downloaded when we're done,
+     * whether we have it yet. If we only want some of the files,
+     * this may be less than [TotalSize].
+     * [0...tr_torrent_view.total_size]
      *
      * transmission struct: tr_stat */
-    data object SizeWhenDone : TorrentFields<Int>("sizeWhenDone") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object SizeWhenDone : TorrentFields<ByteCount>("sizeWhenDone") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.sizeWhenDone.value
     }
 
     /**
+     * When the torrent was last started.
      *
      * transmission struct: tr_stat */
     data object StartDate : TorrentFields<Instant>("startDate") {
@@ -647,42 +676,51 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * A [TorrentStatus] object describing the current state of the torrent.
      *
      * transmission struct: tr_stat */
-    data object Status : TorrentFields<Int>("status") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object Status : TorrentFields<TorrentStatus>("status") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): TorrentStatus? =
             torrentAccessorData.status.value
     }
 
-    /**  */
-    data object Trackers : TorrentFields<List<Int>>("trackers") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /**
+     * A list of [TrackerData] describing the trackers for this torrent. These
+     * properties are the same as if you took them from [TrackerStats].
+     *  */
+    data object Trackers : TorrentFields<List<TrackerData>>("trackers") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): List<TrackerData>? =
             torrentAccessorData.trackers.value
     }
 
     /**
-     *
-     * transmission struct: string of announce URLs, one per line, with a blank line between tiers */
+     * string of announce URLs, one per line, with a blank line between tiers */
     data object TrackerList : TorrentFields<String>("trackerList") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): String? =
             torrentAccessorData.trackerList.value
     }
 
-    /**  */
-    data object TrackerStats : TorrentFields<List<Int>>("trackerStats") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /** List of [TrackerStatsData] that describes the trackers as well. Not really sure
+     * why transmission loves splitting up their structs into 2 different objects...; */
+    data object TrackerStats : TorrentFields<List<TrackerStatsData>>("trackerStats") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): List<TrackerStatsData>? =
             torrentAccessorData.trackerStats.value
     }
 
     /**
+     * The total size of the torrent, including the files that we don't want. If we
+     * want to get the size of the torrent for only the files that we want, check out
+     * [SizeWhenDone]
      *
      * transmission struct: tr_torrent_view */
-    data object TotalSize : TorrentFields<Int>("totalSize") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object TotalSize : TorrentFields<ByteCount>("totalSize") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.totalSize.value
     }
 
     /**
+     * A link to a copy of the actual .torrent file (on Linux, this goes to
+     * ~/.config/transmission/torrents/{hash}.torrent)
      *
      * transmission struct: tr_info */
     data object TorrentFile : TorrentFields<String>("torrentFile") {
@@ -691,22 +729,25 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Byte count of all data you've ever uploaded for this torrent.
      *
      * transmission struct: tr_stat */
-    data object UploadedEver : TorrentFields<Int>("uploadedEver") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object UploadedEver : TorrentFields<ByteCount>("uploadedEver") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): ByteCount? =
             torrentAccessorData.uploadedEver.value
     }
 
     /**
+     * A [Speed] object describing the maximum upload speed for seeding this torrent.
      *
      * transmission struct: tr_torrent */
-    data object UploadLimit : TorrentFields<Int>("uploadLimit") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): Int? =
+    data object UploadLimit : TorrentFields<Speed>("uploadLimit") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): Speed? =
             torrentAccessorData.uploadLimit.value
     }
 
     /**
+     * Whether the [UploadLimit] is honored.
      *
      * transmission struct: tr_torrent */
     data object UploadLimited : TorrentFields<Boolean>("uploadLimited") {
@@ -715,6 +756,9 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Total uploaded bytes / sizeWhenDone.
+     * NB: In Transmission 3.00 and earlier, this was total upload / download,
+     * which caused edge cases when total download was less than sizeWhenDone.
      *
      * transmission struct: tr_stat */
     data object UploadRatio : TorrentFields<Double>("uploadRatio") {
@@ -722,13 +766,17 @@ sealed class TorrentFields<T : Any>(
             torrentAccessorData.uploadRatio.value
     }
 
-    /**  */
-    data object Wanted : TorrentFields<List<Int>>("wanted") {
-        override fun getValue(torrentAccessorData: TorrentAccessorData): List<Int>? =
+    /** a [BitSet] that describes whether we want a give file. For file with index N,
+     * `bitset[n]` is `true` if we want it, and `false` if we don't */
+    data object Wanted : TorrentFields<BitSet>("wanted") {
+        override fun getValue(torrentAccessorData: TorrentAccessorData): BitSet? =
             torrentAccessorData.wanted.value
     }
 
     /**
+     * A list of strings that describe which webseeds that this torrent is connected to.
+     *
+     * [what's a web seed?](https://askubuntu.com/a/313112)
      *
      * transmission struct: tr_tracker_view */
     data object Webseeds : TorrentFields<List<String>>("webseeds") {
@@ -737,6 +785,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /**
+     * Number of webseeds that are sending data to us
      *
      * transmission struct: tr_stat */
     data object WebseedsSendingToUs : TorrentFields<Int>("webseedsSendingToUs") {
@@ -871,46 +920,46 @@ data class TorrentAccessorData(
     /** property corresponding to [TorrentFields.RecheckProgress] */
     val recheckProgress: Optional<Double> = Optional.None(),
     /** property corresponding to [TorrentFields.SecondsDownloading] */
-    val secondsDownloading: Optional<Int> = Optional.None(),
+    val secondsDownloading: Optional<@Serializable(with = DurationSerializer::class) Duration> = Optional.None(),
     /** property corresponding to [TorrentFields.SecondsSeeding] */
-    val secondsSeeding: Optional<Int> = Optional.None(),
+    val secondsSeeding: Optional<@Serializable(with = DurationSerializer::class) Duration> = Optional.None(),
     /** property corresponding to [TorrentFields.SeedIdleLimit] */
     val seedIdleLimit: Optional<Int> = Optional.None(),
     /** property corresponding to [TorrentFields.SeedIdleMode] */
-    val seedIdleMode: Optional<Int> = Optional.None(),
+    val seedIdleMode: Optional<TorrentIdleMode> = Optional.None(),
     /** property corresponding to [TorrentFields.SeedRatioLimit] */
     val seedRatioLimit: Optional<Double> = Optional.None(),
     /** property corresponding to [TorrentFields.SeedRatioMode] */
-    val seedRatioMode: Optional<Int> = Optional.None(),
+    val seedRatioMode: Optional<TorrentRatioLimit> = Optional.None(),
     /** property corresponding to [TorrentFields.SequentialDownload] */
     @SerialName("sequential_download")
     val sequentialDownload: Optional<Boolean> = Optional.None(),
     /** property corresponding to [TorrentFields.SizeWhenDone] */
-    val sizeWhenDone: Optional<Int> = Optional.None(),
+    val sizeWhenDone: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.StartDate] */
     val startDate: Optional<@Serializable(with = UnixTimeSerializer::class) Instant> = Optional.None(),
     /** property corresponding to [TorrentFields.Status] */
-    val status: Optional<Int> = Optional.None(),
+    val status: Optional<TorrentStatus> = Optional.None(),
     /** property corresponding to [TorrentFields.Trackers] */
-    val trackers: Optional<List<Int>> = Optional.None(),
+    val trackers: Optional<List<TrackerData>> = Optional.None(),
     /** property corresponding to [TorrentFields.TrackerList] */
     val trackerList: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.TrackerStats] */
-    val trackerStats: Optional<List<Int>> = Optional.None(),
+    val trackerStats: Optional<List<TrackerStatsData>> = Optional.None(),
     /** property corresponding to [TorrentFields.TotalSize] */
-    val totalSize: Optional<Int> = Optional.None(),
+    val totalSize: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.TorrentFile] */
     val torrentFile: Optional<String> = Optional.None(),
     /** property corresponding to [TorrentFields.UploadedEver] */
-    val uploadedEver: Optional<Int> = Optional.None(),
+    val uploadedEver: Optional<ByteCount> = Optional.None(),
     /** property corresponding to [TorrentFields.UploadLimit] */
-    val uploadLimit: Optional<Int> = Optional.None(),
+    val uploadLimit: Optional<Speed> = Optional.None(),
     /** property corresponding to [TorrentFields.UploadLimited] */
     val uploadLimited: Optional<Boolean> = Optional.None(),
     /** property corresponding to [TorrentFields.UploadRatio] */
     val uploadRatio: Optional<Double> = Optional.None(),
     /** property corresponding to [TorrentFields.Wanted] */
-    val wanted: Optional<List<Int>> = Optional.None(),
+    val wanted: Optional<@Serializable(with = BinaryArrayToBitsetSerializer::class) BitSet> = Optional.None(),
     /** property corresponding to [TorrentFields.Webseeds] */
     val webseeds: Optional<List<String>> = Optional.None(),
     /** property corresponding to [TorrentFields.WebseedsSendingToUs] */
@@ -965,3 +1014,8 @@ internal class TorrentAccessorResponse(val torrents: List<TorrentAccessorData>) 
 suspend fun RpcClient.getTorrentData(ids: TorrentIds, fields: List<TorrentFields<*>>): List<TorrentAccessorData> {
     return request(TorrentAccessorRequest(ids, fields.map { it.key }.toSet().toList())).torrents
 }
+
+/** helper function for [getTorrentData], but for vararg input instead
+ * of a list. */
+suspend fun RpcClient.getTorrentData(ids: TorrentIds, vararg fields: TorrentFields<*>): List<TorrentAccessorData> =
+    getTorrentData(ids, fields.toList())

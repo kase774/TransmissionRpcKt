@@ -11,7 +11,6 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import java.util.stream.IntStream.IntMapMultiConsumer
 
 /** each byte is set
  * to either -1 if we have the piece, otherwise it is set to the number
@@ -159,3 +158,106 @@ data class PeersFromData(
     /** peers found from a tracker */
     val fromTracker: Int
 )
+
+// link https://github.com/transmission/transmission/blob/ac5c9e082da257e102eb4ff18f2e433976a585d1/libtransmission/transmission.h#L1241
+/** Represents tracker data (some more properties in [TrackerStatsData], please see asw)*/
+@Serializable
+data class TrackerData(
+    /** full announce URL */
+    val announce: String,
+    /** unique transmission-generated ID for use in libtransmission API */
+    val id: Int,
+    /** full scrape URL */
+    val scrape: String,
+    /** The tracker site's name. Uses the first label before the public suffix
+    (https://publicsuffix.org/) in the announce URL's host.
+    e.g. "https://www.example.co.uk/announce/"'s sitename is "example"
+    RFC 1034 says labels must be less than 64 chars */
+    @SerialName("sitename")
+    val siteName: String,
+    /** which tier this tracker is in */
+    val tier: Int
+)
+
+// todo finish docs for this class
+@Serializable
+data class TrackerStatsData(
+    /** same as [TrackerData.announce] */
+    val announce: String,
+    /** the [TrackerState] for announcing */
+    val announceState: TrackerState,
+    /** number of times this torrent's been downloaded, or -1 if unknown */
+    val downloadCount: Int,
+    /** true iff we've announced to this tracker during this session */
+    val hasAnnounced: Boolean,
+    /** true iff we've scraped this tracker during this session */
+    val hasScraped: Boolean,
+    val host: String,
+    val id: Int,
+    val isBackup: Boolean,
+    val lastAnnouncePeerCount: Long,
+    val lastAnnounceResult: String,
+    val lastAnnounceStartTime: Long,
+    val lastAnnounceSucceeded: Boolean,
+    val lastAnnounceTime: Long,
+    val lastAnnounceTimedOut: Boolean,
+    val lastScrapeResult: String,
+    val lastScrapeStartTime: Long,
+    val lastScrapeSucceeded: Boolean,
+    val lastScrapeTime: Long,
+    val lastScrapeTimedOut: Boolean,
+    val leecherCount: Int,
+    val nextAnnounceTime: Long,
+    val nextScrapeTime: Long,
+    val scrape: String,
+    /** [TrackerState] for scraping */
+    val scrapeState: TrackerState,
+    val seederCount: Int,
+    /** The tracker site's name. Uses the first label before the public suffix
+    (https://publicsuffix.org/) in the announce URL's host.
+    e.g. "https://www.example.co.uk/announce/"'s sitename is "example"
+    RFC 1034 says labels must be less than 64 chars.
+
+     Same as [TrackerData.siteName]*/
+    @SerialName("sitename")
+    val siteName: String,
+    val tier: Int
+) {
+    /** describes the state of the tracker for that action (announcing / scraping).
+     *
+     * There are 4 values:
+     *  - [Inactive]
+     *  - [Waiting]
+     *  - [Queued]
+     *  - [Active]*/
+    @Serializable(with = TrackerState.Serializer::class)
+    enum class TrackerState {
+
+        /** we won't (announce,scrape) this torrent to this tracker because
+         * the torrent is stopped, or because of an error, or whatever */
+        Inactive,
+
+        /** we will (announce,scrape) this torrent to this tracker, and are
+         * waiting for enough time to pass to satisfy the tracker's interval */
+        Waiting,
+
+        /** it's time to (announce,scrape) this torrent, and we're waiting on a
+         * free slot to open up in the announce manager */
+        Queued,
+
+        /** we're (announcing,scraping) this torrent right now */
+        Active;
+
+        object Serializer : KSerializer<TrackerState> {
+            override val descriptor: SerialDescriptor =
+                PrimitiveSerialDescriptor("TransmissionRpc.TrackerState", PrimitiveKind.INT)
+
+            override fun deserialize(decoder: Decoder): TrackerState =
+                entries[decoder.decodeInt()]
+
+            override fun serialize(encoder: Encoder, value: TrackerState) =
+                encoder.encodeInt(value.ordinal)
+
+        }
+    }
+}

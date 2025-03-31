@@ -44,7 +44,12 @@ fun createSimpleHttpClient(timeout: Duration = 5.seconds): HttpClient = HttpClie
 }
 
 private val rpcClientLogger by lazy { KotlinLogging.logger { } }
-private val defaultJson = Json { encodeDefaults = true }
+private val defaultJson = Json {
+    encodeDefaults = true
+    // torrent-get seems to sometimes include a "removed" key...
+    // doesn't serialize well without this
+    ignoreUnknownKeys = true
+}
 
 /** Represents a rpc request the client can send, where [T] is the type of the response that
  * we expect from the server in response. When serialized, should match the "arguments" property
@@ -71,7 +76,7 @@ data object NullResponse : RpcResponse
 
 /** A lower level client that directly executes transactions with the server
  * through direct requests. Most direct actions are executed as extension functions
- * on this class.
+ * on this class. (for example, getting data from a torrent is [RpcClient.getTorrentData])
  *
  * Uses the specified [HttpClient] to perform requests (by default this is a barebones
  * client that logs requests and has a 5-second timeout, from [createSimpleHttpClient]). you can also pass in your own client,
@@ -93,7 +98,7 @@ class RpcClient(
     val logger: KLogger = rpcClientLogger,
     /** The json used to serialize content. encodeDefaults should be `false`; setting it to `true`
      * will cause numerous errors */
-    val json: Json = Json
+    val json: Json = defaultJson
 ) : CoroutineScope by httpClient {
     internal var csrfToken: String = ""
     private var authToken: String? = null

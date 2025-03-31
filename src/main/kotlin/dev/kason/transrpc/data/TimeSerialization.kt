@@ -23,7 +23,7 @@ object UnixTimeSerializer : KSerializer<Instant> {
 
 }
 
-/** time_t as long serialize to duration */
+/** serialize [Duration] as the number of seconds & vice versa */
 object DurationSerializer : KSerializer<Duration> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("TransmissionRpc.Duration", PrimitiveKind.LONG)
