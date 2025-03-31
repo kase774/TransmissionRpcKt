@@ -393,7 +393,9 @@ sealed class TorrentFields<T : Any>(
 
     /**
      * The string name of this torrent; for example
-     *
+     * `linuxmint-22.1-cinnamon-64bit.iso`. Tends to be similar to the name
+     * of the torrent file you added (though not always); it's the name of
+     * the torrent in the transmission gui.
      *
      * transmission struct: tr_torrent_view */
     data object Name : TorrentFields<String>("name") {
@@ -767,7 +769,7 @@ sealed class TorrentFields<T : Any>(
     }
 
     /** a [BitSet] that describes whether we want a give file. For file with index N,
-     * `bitset[n]` is `true` if we want it, and `false` if we don't */
+     * `bitset.get(N)` is `true` if we want it, and `false` if we don't */
     data object Wanted : TorrentFields<BitSet>("wanted") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): BitSet? =
             torrentAccessorData.wanted.value
@@ -978,6 +980,8 @@ data class TorrentAccessorData(
                     .append(",")
             }
         }
+        deleteCharAt(length - 1)
+        append("}")
     }
 
 }
@@ -995,7 +999,10 @@ internal data class TorrentAccessorRequest(
 internal class TorrentAccessorResponse(val torrents: List<TorrentAccessorData>) :
     List<TorrentAccessorData> by torrents, RpcResponse
 
-/** Returns a list of [TorrentAccessorData] for each torrent specified by [ids] in the order
+/**
+ * Fetches data from the transmission daemon about the given torrents.
+ *
+ * Returns a list of [TorrentAccessorData] for each torrent specified by [ids] in the order
  * specified, with the fields specified by [fields] set ([TorrentFields])
  *
  * Example:
@@ -1015,7 +1022,7 @@ suspend fun RpcClient.getTorrentData(ids: TorrentIds, fields: List<TorrentFields
     return request(TorrentAccessorRequest(ids, fields.map { it.key }.toSet().toList())).torrents
 }
 
-/** helper function for [getTorrentData], but for vararg input instead
+/** helper function for [getTorrentData], but for vararg field inputs instead
  * of a list. */
 suspend fun RpcClient.getTorrentData(ids: TorrentIds, vararg fields: TorrentFields<*>): List<TorrentAccessorData> =
     getTorrentData(ids, fields.toList())

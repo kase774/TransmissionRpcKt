@@ -35,7 +35,7 @@ fun createSimpleHttpClient(timeout: Duration = 5.seconds): HttpClient = HttpClie
         requestTimeoutMillis = timeout.inWholeMilliseconds
     }
     install(Logging) {
-        level = LogLevel.ALL
+        level = LogLevel.BODY
         logger = Logger.DEFAULT
         sanitizeHeader {
             it == HttpHeaders.Authorization
@@ -45,7 +45,9 @@ fun createSimpleHttpClient(timeout: Duration = 5.seconds): HttpClient = HttpClie
 
 private val rpcClientLogger by lazy { KotlinLogging.logger { } }
 private val defaultJson = Json {
-    encodeDefaults = true
+
+    // NEVER SET THIS TO TRUE
+    encodeDefaults = false
     // torrent-get seems to sometimes include a "removed" key...
     // doesn't serialize well without this
     ignoreUnknownKeys = true
