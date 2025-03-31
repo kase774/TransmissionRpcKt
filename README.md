@@ -43,10 +43,10 @@ how to deal with coroutines.
 Chapters: (direct implementation of rpc protocol in `dev.kason.transrpc.low`)
 
  - [x] connection (2.1 - 2.3)
- - [ ] torrent requests (3)
+ - [x] torrent requests (3)
    - [x] action (3.1)
    - [x] mutators (3.2)
-   - [x] accessors (3.3) [untyped, typing in development]
+   - [x] accessors (3.3)
    - [x] methods (3.4-) 
      - [x] adding (3.4)
      - [x] removing (3.5)
