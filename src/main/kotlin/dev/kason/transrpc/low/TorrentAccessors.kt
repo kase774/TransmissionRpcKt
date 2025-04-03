@@ -1026,3 +1026,7 @@ suspend fun RpcClient.getTorrentData(ids: TorrentIds, fields: List<TorrentFields
  * of a list. */
 suspend fun RpcClient.getTorrentData(ids: TorrentIds, vararg fields: TorrentFields<*>): List<TorrentAccessorData> =
     getTorrentData(ids, fields.toList())
+
+/** Shorthand for `torrentFields.getValue(torrentAccessorData)` */
+operator fun <T : Any> TorrentAccessorData.get(torrentFields: TorrentFields<T>): T? =
+    torrentFields.getValue(this)

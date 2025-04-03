@@ -32,8 +32,10 @@ internal object Base64ToBitsetSerializer: KSerializer<BitSet> {
     }
 }
 
-// for the pieces property which is serialized as base64
+// for the wanted property; bitset better than binary array in memory efficiency (though if its just
+// file count then it shouldn't be too bad unlike pieces
 internal object BinaryArrayToBitsetSerializer: KSerializer<BitSet> {
+    // int array surrogate pattern
     private val delegate = IntArraySerializer()
     override val descriptor: SerialDescriptor = SerialDescriptor("TransmissionRpc.BinaryBitset", delegate.descriptor)
 

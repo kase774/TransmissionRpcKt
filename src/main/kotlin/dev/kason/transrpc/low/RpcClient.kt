@@ -1,3 +1,5 @@
+@file:Suppress("MemberVisibilityCanBePrivate")
+
 package dev.kason.transrpc.low
 
 import dev.kason.transrpc.isObject
@@ -91,7 +93,7 @@ data object NullResponse : RpcResponse
  * are set to the correct values!
  * */
 class RpcClient(
-    val httpClient: HttpClient = createSimpleHttpClient(),
+    private val httpClient: HttpClient = createSimpleHttpClient(),
     val transmissionUrl: Url = defaultTransmissionUrl,
     username: String? = null,
     password: String? = null,

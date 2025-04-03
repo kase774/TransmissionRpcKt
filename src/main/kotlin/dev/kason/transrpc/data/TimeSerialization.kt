@@ -1,6 +1,7 @@
 package dev.kason.transrpc.data
 
 import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalTime
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -33,5 +34,23 @@ object DurationSerializer : KSerializer<Duration> {
 
     override fun serialize(encoder: Encoder, value: Duration) =
         encoder.encodeLong(value.inWholeSeconds)
+
+}
+
+/** deserialize # of minutes past midnight as local time */
+object LocalTimeMinuteSerializer : KSerializer<LocalTime> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("TransmissionRpc.LocalTimeMinute", PrimitiveKind.INT)
+
+    override fun deserialize(decoder: Decoder): LocalTime {
+        val minutes = decoder.decodeInt()
+        val hours = minutes / 60
+        val minute = minutes % 60
+        return LocalTime(hours, minute, 0, 0)
+    }
+
+    override fun serialize(encoder: Encoder, value: LocalTime) {
+        val minutes = value.hour * 60 + value.minute
+        encoder.encodeInt(minutes)
+    }
 
 }
