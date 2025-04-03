@@ -9,8 +9,7 @@ https://github.com/trim21/transmission-rpc
 Looking for co-maintainers!! (check out the contributions section :3)
 
 This library was originally written for my own purposes, so parts of the library that I didn't need aren't
-prioritized as much (for ex, don't plan on typing 4.1.1~4.1.2, session data, like I did 
-for `TorrentAccessors.kt`). 
+prioritized as much. (less documentation for 4.1+)
 
 ### Usage
 This is still in development, so I haven't published it to Gradle yet. However, if you want to test it
