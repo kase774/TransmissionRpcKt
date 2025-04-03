@@ -188,7 +188,7 @@ sealed class SessionFields<T : Any>(
 data class SessionAccessorData(
     /** property corresponding to [SessionFields.AltSpeedDown] */
     @SerialName("alt-speed-down")
-    val altSpeedDown: Optional<Speed> = Optional.None(),
+    val altSpeedDown: Optional<@Serializable(Speed.IntSerializer::class) Speed> = Optional.None(),
     /** property corresponding to [SessionFields.AltSpeedEnabled] */
     @SerialName("alt-speed-enabled")
     val altSpeedEnabled: Optional<Boolean> = Optional.None(),
@@ -206,7 +206,7 @@ data class SessionAccessorData(
     val altSpeedTimeEnd: Optional<@Serializable(with = LocalTimeMinuteSerializer::class) LocalTime> = Optional.None(),
     /** property corresponding to [SessionFields.AltSpeedUp] */
     @SerialName("alt-speed-up")
-    val altSpeedUp: Optional<Speed> = Optional.None(),
+    val altSpeedUp: Optional<@Serializable(Speed.IntSerializer::class) Speed> = Optional.None(),
     /** property corresponding to [SessionFields.BlocklistEnabled] */
     @SerialName("blocklist-enabled")
     val blocklistEnabled: Optional<Boolean> = Optional.None(),
@@ -331,13 +331,13 @@ data class SessionAccessorData(
     val speedLimitDownEnabled: Optional<Boolean> = Optional.None(),
     /** property corresponding to [SessionFields.SpeedLimitDown] */
     @SerialName("speed-limit-down")
-    val speedLimitDown: Optional<Speed> = Optional.None(),
+    val speedLimitDown: Optional<@Serializable(Speed.IntSerializer::class) Speed> = Optional.None(),
     /** property corresponding to [SessionFields.SpeedLimitUpEnabled] */
     @SerialName("speed-limit-up-enabled")
     val speedLimitUpEnabled: Optional<Boolean> = Optional.None(),
     /** property corresponding to [SessionFields.SpeedLimitUp] */
     @SerialName("speed-limit-up")
-    val speedLimitUp: Optional<Speed> = Optional.None(),
+    val speedLimitUp: Optional<@Serializable(Speed.IntSerializer::class) Speed> = Optional.None(),
     /** property corresponding to [SessionFields.StartAddedTorrents] */
     @SerialName("start-added-torrents")
     val startAddedTorrents: Optional<Boolean> = Optional.None(),
@@ -436,6 +436,11 @@ suspend fun RpcClient.getSessionData(fields: List<SessionFields<*>>? = null): Se
     return request(request)
 }
 
+/** Vararg variant of [RpcClient.getSessionData]. Note that there's no null ability here, if you want
+ * a null option, leave the fields option empty; it should default to the other function */
+suspend fun RpcClient.getSessionData(vararg fields: SessionFields<*>): SessionAccessorData =
+    getSessionData(fields.toList())
+
 private val nonMutableProperties = SessionFields::class.sealedSubclasses
     .map { it.objectInstance!! }
     .filter { !it.isMutable }
@@ -461,7 +466,14 @@ suspend fun RpcClient.setSessionData(sessionAccessorData: SessionAccessorData) {
     request(sessionAccessorData)
 }
 
-/** Sets the session data to the given parameters
+/** Sets the session data to the given parameters.
+ *
+ *  For example:
+ *  ```
+ *  rpc.setSessionData(
+ *         speedLimitDown = 5.megaBytesPerSecond
+ *  )
+ *  ```
  *
  * Params:
  * @param [altSpeedDown] max global download speed (KBps)

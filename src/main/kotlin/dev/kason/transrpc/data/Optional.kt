@@ -57,3 +57,10 @@ sealed interface Optional<out T> {
  * if not, wrap the value */
 fun <T> Optional(value: T?): Optional<T> =
     if (value == null) Optional.None() else Optional.Some(value)
+
+/** Unwraps the optional, assuming that it's a [Optional.Some]. If it isn't, this
+ * function will throw an error */
+fun <T> Optional<T>.unwrap(): T {
+    require(this is Optional.Some) { "attempted to unwrap None optional" }
+    return this.value
+}
