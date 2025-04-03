@@ -7,8 +7,5 @@ import dev.kason.transrpc.low.*
 suspend fun main() {
     val rpc = RpcClient()
 
-    rpc.setSessionData(
-        speedLimitDown = 100.kiloBytesPerSecond,
-        speedLimitDownEnabled = false
-    )
+    println(rpc.getSessionStats())
 }
