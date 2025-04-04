@@ -197,6 +197,8 @@ sealed class TorrentFields<T : Any>(
      * If downloading, estimated number of seconds left until the torrent is done.
      * If seeding, estimated number of seconds left until seed ratio is reached.
      *
+     * The property will be set to -1 if unknown
+     *
      * transmission struct: tr_stat */
     data object Eta : TorrentFields<Duration>("eta") {
         override fun getValue(torrentAccessorData: TorrentAccessorData): Duration? =
