@@ -67,7 +67,7 @@ Chapters: (direct implementation of rpc protocol in `dev.kason.transrpc`)
    - [x] shutdown (4.5)
    - [x] queue movement (4.6)
    - [x] free space (4.7)
- - [ ] bandwidth groups (4.8)
+ - [x] bandwidth groups (4.8)
 
 ~~In addition, a light but higher level wrapper around the `low` to 
 make management easier:~~
