@@ -67,11 +67,19 @@ data class TorrentSetRequest(
         get() = "torrent-set"
 }
 
-/** Public for torrent set since it's easier to use the class sometimes */
+/** Public for torrent set since it's easier to use the class sometimes. This function is similar
+ * to [torrentSetProperties] but accepts a [TorrentSetRequest], which contains both the parameters
+ * to change and also the ids it is applied to.
+ * Any property not set won't be affected by this request.
+ *
+ * Note: to change location after content has been downloaded, use [RpcClient.moveTorrent] */
 suspend fun RpcClient.sendTorrentSetProperties(setRequest: TorrentSetRequest) =
     request(setRequest)
 
-/** Sets the properties */
+/** Sets the properties according to the values specified. Any property not set won't be affected
+ * by this request.
+ *
+ * Note: to change location after content has been downloaded, use [RpcClient.moveTorrent]*/
 suspend fun RpcClient.torrentSetProperties(
     ids: TorrentIds,
     /** this torrent's bandwidth priority */

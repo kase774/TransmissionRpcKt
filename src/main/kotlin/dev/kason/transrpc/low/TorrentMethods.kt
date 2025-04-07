@@ -278,7 +278,7 @@ suspend fun RpcClient.addTorrentFromBase64EncodedContent(
 // 3.5 removing
 @Serializable
 internal data class TorrentRemoveRequest(
-    val ids: TorrentIds,
+    val ids: TorrentIds = TorrentIds.All,
     @SerialName("delete-local-data")
     val deleteLocalData: Boolean
 ) : RpcRequest<NullResponse>() {
@@ -301,7 +301,7 @@ suspend fun RpcClient.removeTorrent(ids: TorrentId, deleteLocalData: Boolean = f
 
 @Serializable
 internal data class TorrentMoveRequest(
-    val ids: TorrentIds,
+    val ids: TorrentIds = TorrentIds.All,
     val location: String,
     val move: Boolean
 ) : RpcRequest<NullResponse>() {
